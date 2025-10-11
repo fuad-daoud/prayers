@@ -25,10 +25,8 @@ jobs:
           GOOS=linux GOARCH=arm64 go build -o prayers-linux-arm64 ./main.go
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             prayers-linux-amd64
             prayers-linux-arm64
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
