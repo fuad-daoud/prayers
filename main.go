@@ -7,8 +7,11 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
 )
 
@@ -79,6 +82,7 @@ func getPrayerInfo(ip string) (PrayerInfo, error) {
 	if err != nil {
 		return PrayerInfo{}, nil
 	}
+	jsonString = []byte(strings.ReplaceAll(string(jsonString), "%", ""))
 	var result PrayerInfo
 	err = json.Unmarshal(jsonString, &result)
 	if err != nil {
@@ -90,13 +94,14 @@ func getPrayerInfo(ip string) (PrayerInfo, error) {
 }
 
 type model struct {
-	width  int
-	height int
-	ip     string
-	info   PrayerInfo
+	width   int
+	height  int
+	info    PrayerInfo
+	spin    spinner.Model
+	loading bool
 }
 
-func InitialModel() model {
+func fetchData() tea.Msg {
 	ip, err := getPublicIP()
 	if err != nil {
 		fmt.Printf("Could no get public ip: %v\n", err)
@@ -107,11 +112,21 @@ func InitialModel() model {
 		fmt.Printf("Could not get prayer info: %v\n", err)
 		os.Exit(1)
 	}
-	return model{ip: ip, info: info}
+	return info
 }
 
-func (model) Init() tea.Cmd {
-	return nil
+func InitialModel() model {
+	spin := spinner.New(spinner.WithSpinner(spinner.Globe))
+	spin.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("69"))
+	spin.Spinner.FPS = time.Second / 10
+	return model{spin: spin, loading: true}
+}
+
+func (m model) Init() tea.Cmd {
+	return tea.Batch(
+		m.spin.Tick,
+		fetchData,
+	)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -123,13 +138,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
+		default:
+			return m, nil
 		}
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spin, cmd = m.spin.Update(msg)
+		return m, cmd
+	case PrayerInfo:
+		m.info = msg
+		m.loading = false
+		return m, nil
 	}
-
 	return m, nil
 }
 
+var helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render
+
 func (m model) View() string {
+	if m.loading {
+		return fmt.Sprintf("%s fetching prayers times based on your location\n %s", m.spin.View(), helpStyle("• q/ctrl+c: exit\n"))
+	}
 	t := table.New()
 	t.Headers("Prayer", "time")
 	t.Row("Fajr", m.info.Results.Fajr)
@@ -137,7 +166,7 @@ func (m model) View() string {
 	t.Row("Asr", m.info.Results.Asr)
 	t.Row("Maghrib", m.info.Results.Maghrib)
 	t.Row("Isha", m.info.Results.Isha)
-	return t.Render() + "\n"
+	return t.Render() + "\n" + helpStyle("• q/ctrl+c: exit\n")
 
 	// return lipgloss.Place(
 	// 	m.width,
@@ -149,7 +178,8 @@ func (m model) View() string {
 }
 
 func main() {
-	p := tea.NewProgram(InitialModel())
+	m := InitialModel()
+	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Some error happened %v\n", err)
 		os.Exit(1)
