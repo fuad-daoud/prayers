@@ -17,62 +17,29 @@ import (
 
 const MAIN_COLOR = "#FAFAFA"
 
-func getPublicIP() (string, error) {
-	resp, err := http.Get("https://api.ipify.org?format=text")
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	ip, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	return strings.TrimSpace(string(ip)), nil
-}
 
 type PrayerInfo struct {
-	Results struct {
-		Fajr    string `json:"Fajr"`
-		Duha    string `json:"Duha"`
-		Dhuhr   string `json:"Dhuhr"`
-		Asr     string `json:"Asr"`
-		Maghrib string `json:"Maghrib"`
-		Isha    string `json:"Isha"`
-	} `json:"results"`
-	Settings struct {
-		Name     string `json:"name"`
-		Location struct {
-			City    string `json:"city"`
-			State   string `json:"state"`
-			Country string `json:"country"`
-		} `json:"location"`
-		Latitude     string `json:"latitude"`
-		Longitude    string `json:"longitude"`
-		Timezone     string `json:"timezone"`
-		Method       int    `json:"method"`
-		Juristic     int    `json:"juristic"`
-		HighLatitude int    `json:"high_latitude"`
-		FajirRule    struct {
-			Type  int `json:"type"`
-			Value int `json:"value"`
-		} `json:"fajir_rule"`
-		MaghribRule struct {
-			Type  int `json:"type"`
-			Value int `json:"value"`
-		} `json:"maghrib_rule"`
-		IshaRule struct {
-			Type  int `json:"type"`
-			Value int `json:"value"`
-		} `json:"isha_rule"`
-		TimeFormat int `json:"time_format"`
-	} `json:"settings"`
-	Success bool `json:"success"`
+	Code   int    `json:"code"`
+	Status string `json:"status"`
+	Data   struct {
+		Timings struct {
+			Fajr       string `json:"Fajr"`
+			Sunrise    string `json:"Sunrise"`
+			Dhuhr      string `json:"Dhuhr"`
+			Asr        string `json:"Asr"`
+			Sunset     string `json:"Sunset"`
+			Maghrib    string `json:"Maghrib"`
+			Isha       string `json:"Isha"`
+			Imsak      string `json:"Imsak"`
+			Midnight   string `json:"Midnight"`
+			Firstthird string `json:"Firstthird"`
+			Lastthird  string `json:"Lastthird"`
+		} `json:"timings"`
+	} `json:"data"`
 }
 
-func getPrayerInfo(ip string) (PrayerInfo, error) {
-	resp, err := http.Get("https://islamicfinder.us/index.php/api/prayer_times?user_ip=" + ip)
+func getPrayerInfo() (PrayerInfo, error) {
+	resp, err := http.Get("https://api.aladhan.com/v1/timings/13-10-2025?latitude=31.9461222&longitude=35.923844&method=23&&timezonestring=Asia%2FAmman")
 	if err != nil {
 		return PrayerInfo{}, err
 	}
@@ -90,6 +57,10 @@ func getPrayerInfo(ip string) (PrayerInfo, error) {
 		fmt.Printf("jsonString: %v\n", jsonString)
 		os.Exit(1)
 	}
+	if result.Code != 200 {
+		fmt.Printf("Error integrating got none 200 status %v\n", result)
+		os.Exit(1)
+	}
 	return result, nil
 }
 
@@ -102,12 +73,7 @@ type model struct {
 }
 
 func fetchData() tea.Msg {
-	ip, err := getPublicIP()
-	if err != nil {
-		fmt.Printf("Could no get public ip: %v\n", err)
-		os.Exit(1)
-	}
-	info, err := getPrayerInfo(ip)
+	info, err := getPrayerInfo()
 	if err != nil {
 		fmt.Printf("Could not get prayer info: %v\n", err)
 		os.Exit(1)
@@ -161,11 +127,11 @@ func (m model) View() string {
 	}
 	t := table.New()
 	t.Headers("Prayer", "time")
-	t.Row("Fajr", m.info.Results.Fajr)
-	t.Row("Dhuhr", m.info.Results.Dhuhr)
-	t.Row("Asr", m.info.Results.Asr)
-	t.Row("Maghrib", m.info.Results.Maghrib)
-	t.Row("Isha", m.info.Results.Isha)
+	t.Row("Fajr", m.info.Data.Timings.Fajr)
+	t.Row("Dhuhr", m.info.Data.Timings.Dhuhr)
+	t.Row("Asr", m.info.Data.Timings.Asr)
+	t.Row("Maghrib", m.info.Data.Timings.Maghrib)
+	t.Row("Isha", m.info.Data.Timings.Isha)
 	return t.Render() + "\n" + helpStyle("• q/ctrl+c: exit\n")
 
 	// return lipgloss.Place(
