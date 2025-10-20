@@ -11,7 +11,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Generate PKGBUILD
-        uses: fuad-daoud/release-aur@v0.2.0
+        uses: fuad-daoud/release-aur@main
+        id: release-aur
         with:
           cli_name: "prayers"
           maintainers: "Fuad Daoud <aur@fuad-daoud.com>"
@@ -28,13 +29,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pkgbuild
-          path: output/PKGBUILD
+          path: ${{ steps.release-aur.outputs.pkgbuild_path }}
 
       - name: Publish pkgmate-bin to the AUR
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
         with:
           pkgname: pkgmate-bin
-          pkgbuild: output/PKGBUILD
+          pkgbuild: ${{ steps.release-aur.outputs.pkgbuild_path }}
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
