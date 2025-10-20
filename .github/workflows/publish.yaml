@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Generate PKGBUILD
-        uses: fuad-daoud/release-aur@v0.1.6
+        uses: fuad-daoud/release-aur@v0.1.7
         with:
           cli_name: "prayers"
           maintainers: "Fuad Daoud <aur@fuad-daoud.com>"
@@ -23,19 +23,18 @@ jobs:
           licence: "MIT"
           source_x86_64: "https://github.com/${{ github.repository }}/releases/download/${{ github.event.release.tag_name }}/prayers-linux-amd64"
           source_aarch64: "https://github.com/${{ github.repository }}/releases/download/${{ github.event.release.tag_name }}/prayers-linux-arm64"
-          output_path: $GITHUB_WORKSPACE/PKGBUILD
 
       - name: Upload PKGBUILD
         uses: actions/upload-artifact@v4
         with:
           name: pkgbuild
-          path: $GITHUB_WORKSPACE/PKGBUILD
+          path: output/PKGBUILD
 
       - name: Publish pkgmate-bin to the AUR
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
         with:
           pkgname: pkgmate-bin
-          pkgbuild: $GITHUB_WORKSPACE/PKGBUILD
+          pkgbuild: output/PKGBUILD
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
